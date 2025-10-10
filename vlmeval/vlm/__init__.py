@@ -2,6 +2,8 @@ import torch
 
 torch.set_grad_enabled(False)
 torch.manual_seed(1234)
+from .hf_vlm import HuggingFaceVisionVLM
+from .llava_med import LLaVAMedLocal
 from .aria import Aria
 from .base import BaseModel
 from .hawk_vl import HawkVL

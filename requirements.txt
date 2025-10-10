@@ -2,7 +2,7 @@ accelerate
 dotenv
 einops
 # for gemini api
-google-genai
+# google-genai
 gradio
 huggingface_hub
 imageio

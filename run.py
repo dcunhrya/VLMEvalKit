@@ -171,6 +171,8 @@ You can launch the evaluation by setting either --data and --model or --config.
     parser = argparse.ArgumentParser(description=help_msg, formatter_class=argparse.RawTextHelpFormatter)
     # Essential Args, Setting the Names of Datasets and Models
     parser.add_argument('--data', type=str, nargs='+', help='Names of Datasets')
+    parser.add_argument('--data-file', '--data_file', dest='data_file', type=str,
+                        help='Optional path to a TSV to pass to datasets that require external files.')
     parser.add_argument('--model', type=str, nargs='+', help='Names of Models')
     parser.add_argument('--config', type=str, help='Path to the Config Json File')
     # Work Dir
@@ -210,7 +212,11 @@ def main():
         args.model = list(cfg['model'].keys())
         args.data = list(cfg['data'].keys())
     else:
-        assert len(args.data), '--data should be a list of data files'
+        if not args.data:
+            if args.data_file:
+                args.data = ['MICROBENCH']
+            else:
+                raise AssertionError('--data should be provided unless a --config file is used or --data-file is set.')
 
     if RANK == 0:
         if not args.reuse:
@@ -287,6 +293,8 @@ def main():
                     dataset_kwargs = {}
                     if dataset_name in ['MMLongBench_DOC', 'DUDE', 'DUDE_MINI', 'SLIDEVQA', 'SLIDEVQA_MINI']:
                         dataset_kwargs['model'] = model_name
+                    if args.data_file and dataset_name in ['MICROBENCH']:
+                        dataset_kwargs['data_file'] = args.data_file
 
                     # If distributed, first build the dataset on the main process for doing preparation works
                     if WORLD_SIZE > 1:

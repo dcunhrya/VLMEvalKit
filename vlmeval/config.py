@@ -1,7 +1,14 @@
 from vlmeval.vlm import *
 from vlmeval.api import *
 from functools import partial
-import os
+import os, yaml, importlib
+
+from vlmeval.vlm.huatuo import HuatuoVision7b, HuatuoVision34b
+from vlmeval.vlm.llava_tri import LLaVATriPretrained
+from vlmeval.vlm.llava_medmoe import LLaVAPhi, LLaVAStableLM
+# from vlmeval.vlm.med_flamingo import MedFlamingo
+from vlmeval.vlm.biomedgpt import BioMedGPT
+from vlmeval.vlm.vividmed import VividMed
 
 PandaGPT_ROOT = None
 MiniGPT4_ROOT = None
@@ -56,6 +63,12 @@ ungrouped = {
         name="v2",
         mpt_pth="anas-awadalla/mpt-7b",
         ckpt_pth="openflamingo/OpenFlamingo-9B-vitl-mpt7b",
+    ),
+    "medflamingo" : partial(
+        OpenFlamingo,
+        name="v2",
+        mpt_pth="anas-awadalla/mpt-7b",
+        ckpt_pth="med-flamingo/med-flamingo"
     ),
     "VisualGLM_6b": partial(VisualGLM, model_path="THUDM/visualglm-6b"),
     "mPLUG-Owl2": partial(mPLUG_Owl2, model_path="MAGAer13/mplug-owl2-llama2-7b"),
@@ -1684,5 +1697,38 @@ model_groups = [
     flash_vl, kimi_vllm_series, oryx_series, treevgr_series, varco_vision_series, qtunevl_series, xvl_series, thyme_series,logics_series
 ]
 
+
+CustomMBMUModels = {
+    "HuggingFaceVisionVLM": HuggingFaceVisionVLM,
+    "LLaVAMedLocal": LLaVAMedLocal,
+    "HuatuoVision7b": HuatuoVision7b,
+    "HuatuoVision34b": HuatuoVision34b,
+    "LLaVATriPretrained": LLaVATriPretrained,
+    "LLaVAPhi": LLaVAPhi,
+    "LLaVAStableLM": LLaVAStableLM,
+    # "MedFlamingo": MedFlamingo,
+    "BioMedGPT": BioMedGPT,
+    "VividMed": VividMed,
+    # "HFCLIPScorer": HFCLIPScorer,
+}
+
+# def _import_by_path(dotted: str):
+#     mod, cls = dotted.rsplit(".", 1)
+#     return getattr(importlib.import_module(mod), cls)
+
+def load_models_from_yaml(yaml_path: str):
+    if not os.path.exists(yaml_path):
+        return {}
+    cfg = yaml.safe_load(open(yaml_path)) or {}
+    out = {}
+    for m in cfg.get("models", []):
+        name = m.pop("name")
+        cls_id = m.pop("cls")
+        Cls = CustomMBMUModels.get(cls_id) #or _import_by_path(cls_id)
+        out[name] = partial(Cls, **m)
+    return out
+
+_yaml_path = "models.yaml"
+supported_VLM.update(load_models_from_yaml(_yaml_path))
 for grp in model_groups:
     supported_VLM.update(grp)

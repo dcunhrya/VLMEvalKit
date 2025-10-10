@@ -7,7 +7,10 @@ import re
 import warnings
 
 import torch
-from transformers.cache_utils import DynamicCache
+try:
+    from transformers.cache_utils import DynamicCache
+except:
+    pass
 
 from ..base import BaseModel
 from .prompt import ThymePromptMixin

@@ -395,7 +395,7 @@ class LLaVA_Next(BaseModel):
         prompt = self.processor.apply_chat_template(
             conversation, add_generation_prompt=True
         )
-        inputs = self.processor(prompt, images, return_tensors="pt").to(
+        inputs = self.processor(text=prompt, images=images, return_tensors="pt").to(
             "cuda", torch.float16
         )
         output = self.model.generate(**inputs, **self.kwargs)

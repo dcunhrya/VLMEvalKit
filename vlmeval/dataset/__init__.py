@@ -1,5 +1,6 @@
 import warnings
 
+from .microbench import MICROBENCH
 from .image_base import img_root_map, ImageBaseDataset
 from .image_caption import ImageCaptionDataset
 from .image_yorn import ImageYORNDataset
@@ -205,7 +206,7 @@ IMAGE_DATASET = [
     ZEROBench, SCAM, Omni3DBench, TallyQA, _3DSRBench, BMMR, AffordanceDataset,
     MMEReasoning, GOBenchDataset, SFE, ChartMimic, MMVMBench, XLRSBench,
     OmniEarthMCQBench, VisFactor, OSTDataset, OCRBench_v2, TreeBench, CVQA, M4Bench,
-    AyaVisionBench, TopViewRS, VLMBias
+    AyaVisionBench, TopViewRS, VLMBias, MICROBENCH
 ]
 
 VIDEO_DATASET = [

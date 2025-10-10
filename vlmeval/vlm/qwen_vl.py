@@ -6,7 +6,6 @@ from .base import BaseModel
 from ..smp import isimg, listinstr
 from ..dataset import DATASET_TYPE
 
-
 class QwenVL(BaseModel):
 
     INSTALL_REQ = False

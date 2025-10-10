@@ -1,11 +1,13 @@
-import sys
+import sys, glob
 import torch
 from PIL import Image
+from transformers import AutoConfig, AutoModelForCausalLM
 import os.path as osp
 import warnings
 from .base import BaseModel
 from ..smp import *
-from huggingface_hub import snapshot_download
+from huggingface_hub import snapshot_download, hf_hub_download
+from accelerate import dispatch_model, load_checkpoint_and_dispatch
 
 
 class OpenFlamingo(BaseModel):
@@ -17,6 +19,11 @@ class OpenFlamingo(BaseModel):
                  name,
                  mpt_pth=None,
                  ckpt_pth=None,
+                 dtype="bf16",
+                 device_map="auto",
+                 device="cuda",
+                 offload_folder="/home/ubuntu/hf_offload",
+                 max_memory={"cuda:0": "38GiB", "cpu": "64GiB"},
                  **kwargs):
 
         if mpt_pth is None:
@@ -31,7 +38,9 @@ class OpenFlamingo(BaseModel):
                 'from: https://huggingface.co/openflamingo/OpenFlamingo-9B-vitl-mpt7b/tree/main. '
             )
         else:
-            if osp.exists(ckpt_pth):
+            if 'med-flamingo' in ckpt_pth:
+                ckpt_pth = osp.join(ckpt_pth, '/tree/main/model.pt')
+            elif osp.exists(ckpt_pth):
                 if ckpt_pth.endswith('checkpoint.pt'):
                     pass
                 elif osp.isdir(ckpt_pth):
@@ -56,6 +65,24 @@ class OpenFlamingo(BaseModel):
         except Exception as e:
             logging.critical('Please first install open_flamingo to use OpenFlamingo')
             raise e
+        
+        if dtype == "bf16":
+            torch_dtype = torch.bfloat16
+        elif dtype in ("fp16", "float16"):
+            torch_dtype = torch.float16
+        else:
+            torch_dtype = torch.float32
+
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        os.makedirs(offload_folder, exist_ok=True)
+
+        if isinstance(device, str):
+            if device.startswith("cuda") and not torch.cuda.is_available():
+                device = "cpu"
+            self.device = torch.device(device)
+        else:
+            self.device = device
 
         model, image_processor, tokenizer = create_model_and_transforms(
             clip_vision_encoder_path='ViT-L-14',
@@ -63,15 +90,35 @@ class OpenFlamingo(BaseModel):
             lang_encoder_path=mpt_pth,
             tokenizer_path=mpt_pth,
             cross_attn_every_n_layers=4)
-        ckpt = torch.load(ckpt_pth)
-        model.load_state_dict(ckpt, strict=False)
+        # print('-------- MODEL LOADED IN ----------')
+        # print(f'CKPT PATH IS {ckpt_pth}')
+        try:
+            ckpt = torch.load(ckpt_pth)
+        except:
+            if "med-flamingo" in ckpt_pth:
+                hf_hub_download(repo_id="med-flamingo/med-flamingo", filename="model.pt")
         torch.cuda.empty_cache()
-        self.model = model.eval().cuda()
+        model = model.to(dtype=torch_dtype).cuda()
+        # dispatch_kwargs = dict(device_map=device_map)
+        # if max_memory:
+        #     dispatch_kwargs["max_memory"] = max_memory
+        # model = dispatch_model(model,device_map="auto",offload_dir=offload_folder, **dispatch_kwargs)
+        self.model = model.to(device=self.device, dtype=torch_dtype)
+        torch.cuda.empty_cache()
+        self.model = self.model.eval()
         self.tokenizer = tokenizer
         self.tokenizer.padding_side = 'left'
+        self.tokenizer.eos_token = "<|endofchunk|>"
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
         self.image_proc = image_processor
 
-        kwargs_default = dict(max_new_tokens=512, num_beams=3)
+        kwargs_default = dict(max_new_tokens=64, 
+                              min_new_tokens=1,
+                              temperature=0.0,
+                              top_p=1.0,
+
+                              num_beams=3)
         kwargs_default.update(kwargs)
         self.kwargs = kwargs_default
         warnings.warn(f'Following kwargs received: {self.kwargs}, will use as generation config. ')
@@ -89,6 +136,8 @@ class OpenFlamingo(BaseModel):
         prompt += 'Answer: '
         vision_x = torch.cat(vision_x, dim=0) if len(vision_x) > 1 else vision_x[0]
         vision_x = vision_x.unsqueeze(1).unsqueeze(0)
+        vdtype = next(self.model.vision_encoder.parameters()).dtype  # e.g., torch.bfloat16
+        vision_x = vision_x.to(device="cuda", dtype=vdtype, non_blocking=True)      
         lang_x = self.tokenizer([prompt], return_tensors='pt')
         generated_text = self.model.generate(
             vision_x=vision_x.cuda(),
