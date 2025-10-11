@@ -3,11 +3,14 @@ from typing import List, Dict, Any
 from PIL import Image
 import torch
 import inspect 
-from transformers import (
-    AutoProcessor, AutoTokenizer, AutoImageProcessor,
-    AutoModelForCausalLM, AutoModelForVision2Seq,
-    PretrainedConfig,
-)
+try:
+    from transformers import (
+        AutoProcessor, AutoTokenizer, AutoImageProcessor,
+        AutoModelForCausalLM, AutoModelForVision2Seq,
+        PretrainedConfig,
+    )
+except:
+    pass
 from vlmeval.vlm.base import BaseModel
 
 IMAGE_FAMILIES_NEEDING_TOKENS = ("gemma3", "llava", "idefics2", "minicpm", "qwen2_vl", "phi3_vision", "internvl")

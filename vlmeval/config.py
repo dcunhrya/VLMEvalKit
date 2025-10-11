@@ -3,12 +3,13 @@ from vlmeval.api import *
 from functools import partial
 import os, yaml, importlib
 
-from vlmeval.vlm.huatuo import HuatuoVision7b, HuatuoVision34b
+from vlmeval.vlm.huatuo import HuatuoVision7b
+
+from vlmeval.vlm.huatuo import HuatuoVision34b
 from vlmeval.vlm.llava_tri import LLaVATriPretrained
 from vlmeval.vlm.llava_medmoe import LLaVAPhi, LLaVAStableLM
-# from vlmeval.vlm.med_flamingo import MedFlamingo
-from vlmeval.vlm.biomedgpt import BioMedGPT
 from vlmeval.vlm.vividmed import VividMed
+
 
 PandaGPT_ROOT = None
 MiniGPT4_ROOT = None
@@ -1707,7 +1708,6 @@ CustomMBMUModels = {
     "LLaVAPhi": LLaVAPhi,
     "LLaVAStableLM": LLaVAStableLM,
     # "MedFlamingo": MedFlamingo,
-    "BioMedGPT": BioMedGPT,
     "VividMed": VividMed,
     # "HFCLIPScorer": HFCLIPScorer,
 }

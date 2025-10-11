@@ -10,10 +10,10 @@ except ImportError:
 from .smp import *
 load_env()
 
-from .api import *
 from .dataset import *
-from .utils import *
 from .vlm import *
+from .api import *
+from .utils import *
 from .config import *
 from .tools import cli
 
