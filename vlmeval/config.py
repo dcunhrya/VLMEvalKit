@@ -11,6 +11,7 @@ from vlmeval.vlm.llava_medmoe import LLaVAPhi, LLaVAStableLM
 from vlmeval.vlm.vividmed import VividMed
 
 
+
 PandaGPT_ROOT = None
 MiniGPT4_ROOT = None
 TransCore_ROOT = None

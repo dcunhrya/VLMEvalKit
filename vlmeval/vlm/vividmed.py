@@ -2,8 +2,11 @@ import re
 import torch
 from PIL import Image
 from pathlib import Path
-import cytoolz
-from jsonargparse import class_from_function
+try:
+    import cytoolz
+    from jsonargparse import class_from_function
+except:
+    pass
 from .base import BaseModel
 from ..smp import *
 from ..dataset import DATASET_TYPE
