@@ -4,9 +4,9 @@
 [submodule "LLaVA"]
 	path = LLaVA
 	url = https://github.com/haotian-liu/LLaVA
-[submodule "LLavaMed"]
-	path = LLavaMed
-	url = https://github.com/microsoft/LLaVA-Med
 [submodule "MedMoE"]
 	path = MedMoE
 	url = https://github.com/jiangsongtao/Med-MoE
+# [submodule "LLavaMed"]
+# 	path = LLavaMed
+# 	url = https://github.com/microsoft/LLaVA-Med
