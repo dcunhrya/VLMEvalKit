@@ -7,6 +7,6 @@
 [submodule "MedMoE"]
 	path = MedMoE
 	url = https://github.com/jiangsongtao/Med-MoE
-# [submodule "LLavaMed"]
-# 	path = LLavaMed
-# 	url = https://github.com/microsoft/LLaVA-Med
+[submodule "LLavaMed"]
+	path = LLavaMed
+	url = https://github.com/microsoft/LLaVA-Med
