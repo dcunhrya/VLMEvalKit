@@ -4,9 +4,6 @@
 [submodule "LLaVA"]
 	path = LLaVA
 	url = https://github.com/haotian-liu/LLaVA
-[submodule "BiomedGPT"]
-	path = BiomedGPT
-	url = https://github.com/taokz/BiomedGPT
 [submodule "LLavaMed"]
 	path = LLavaMed
 	url = https://github.com/microsoft/LLaVA-Med
