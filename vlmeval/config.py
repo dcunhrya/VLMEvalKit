@@ -11,6 +11,7 @@ from vlmeval.vlm.llava_medmoe import LLaVAPhi, LLaVAStableLM
 from vlmeval.vlm.vividmed import VividMed
 from vlmeval.vlm.radfm import RadFM
 from vlmeval.vlm.biogpt import BioGPT
+from vlmeval.vlm.lingshu import Lingshu
 
 
 PandaGPT_ROOT = None
@@ -1713,6 +1714,7 @@ CustomMBMUModels = {
     "VividMed": VividMed,
     "RadFM": RadFM,
     "BioGPT": BioGPT,
+    "Lingshu": Lingshu,
     # "HFCLIPScorer": HFCLIPScorer,
 }
 
