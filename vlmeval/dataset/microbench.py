@@ -101,10 +101,6 @@ class MICROBENCH(ImageBaseDataset):
         letters = _letters(len(opts))
         options_txt = "\n".join(f"{L}. {t}" for L, t in zip(letters, opts))
 
-        # # Optional hint for context (if present)
-        # hint = str(row['hint']).strip() if 'hint' in self.data.columns and not pd.isna(row['hint']) else ""
-        # hint_txt = (hint + "\n") if hint else ""
-
         prompt = (
             f"{row['question']}\n"
             f"Options:\n{options_txt}\n"
@@ -112,68 +108,6 @@ class MICROBENCH(ImageBaseDataset):
             # f"Choose the single best answer that answers the question. Respond with ONE capital letter only between ({letters[0]} and {letters[-1]}). \n"
         )
         return [*image_msgs, dict(type='text', value=prompt)]
-
-    # def evaluate(self, eval_file, **kwargs):
-    #     """
-    #     Expect model predictions saved by VLMEvalKit under eval_file with at least:
-    #     - prediction (raw model text output)
-    #     - options (copied from TSV or rejoined) for dynamic parser range
-    #     - answer (gold letter)
-    #     We compute accuracy and invalid rate.
-    #     """
-    #     df = load(eval_file)
-
-    #     # Make sure we can get num options per-row; fall back to TSV if missing
-    #     if 'options' not in df.columns:
-    #         # join with original TSV by 'index'
-    #         df = df.merge(self.data[['index', 'options']], on='index', how='left', suffixes=('', '_tsv'))
-
-    #     def _num_opts(opt_field):
-    #         try:
-    #             return len(json.loads(opt_field)) if isinstance(opt_field, str) else len(opt_field)
-    #         except Exception:
-    #             return 4
-
-    #     num_opts = df['options'].map(_num_opts)
-
-    #     pred = [
-    #         _parse_letter(pred_text, n)
-    #         for pred_text, n in zip(df['prediction'], num_opts)
-    #     ]
-    #     gold = [str(a).strip().upper() for a in df['answer']]
-
-    #     pred = np.array(pred, dtype=object)
-    #     gold = np.array(gold, dtype=object)
-    #     valid_mask = pred != 'INVALID'
-
-    #     correct = (pred == gold)
-    #     acc = float(correct.mean()) if len(correct) else float('nan')
-    #     invalid_rate = float((~valid_mask).mean()) if len(valid_mask) else float('nan')
-
-    #     bootstrap_iters = int(kwargs.get('bootstrap_iters', 1000))
-    #     confidence_level = float(kwargs.get('confidence_level', 0.95))
-    #     bootstrap_seed = kwargs.get('bootstrap_seed', 0)
-    #     alpha = max(0.0, min(1.0, (1.0 - confidence_level) / 2.0))
-
-    #     if len(correct) >= 2 and bootstrap_iters > 0:
-    #         rng = np.random.default_rng(bootstrap_seed)
-    #         samples = np.empty(bootstrap_iters, dtype=float)
-    #         for i in range(bootstrap_iters):
-    #             idx = rng.integers(0, len(correct), size=len(correct))
-    #             samples[i] = correct[idx].mean()
-    #         lower = float(np.quantile(samples, alpha))
-    #         upper = float(np.quantile(samples, 1.0 - alpha))
-    #     else:
-    #         lower = float('nan')
-    #         upper = float('nan')
-
-    #     return {
-    #         'accuracy': [acc],
-    #         'invalid_rate': [invalid_rate],
-    #         'accuracy_ci_lower': [lower],
-    #         'accuracy_ci_upper': [upper],
-    #     }
-
 
     def _safe_json_list(self,x):
         if isinstance(x, list):
@@ -251,7 +185,7 @@ class MICROBENCH(ImageBaseDataset):
             raise ValueError("Missing/invalid 'options' for some rows")
         n_opts = opts.apply(len)
 
-        print(df["prediction"])
+        # print(df["prediction"])
 
         # Extract predicted letter and gold letter
         pred_letters = [
@@ -259,9 +193,9 @@ class MICROBENCH(ImageBaseDataset):
         ]
         gold_letters = [self._norm_letter(a) or "" for a in df["answer"]]
 
-        print(f'predictions are {df["prediction"]}')
+        # print(f'predictions are {df["prediction"]}')
         pred = np.array(pred_letters, dtype=object)
-        print(f'prediction array is {pred}')
+        # print(f'prediction array is {pred}')
         gold = np.array(gold_letters, dtype=object)
 
         # Accuracy (treat empty/invalid as incorrect)

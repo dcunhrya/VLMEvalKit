@@ -9,7 +9,8 @@ from vlmeval.vlm.huatuo import HuatuoVision34b
 from vlmeval.vlm.llava_tri import LLaVATriPretrained
 from vlmeval.vlm.llava_medmoe import LLaVAPhi, LLaVAStableLM
 from vlmeval.vlm.vividmed import VividMed
-
+from vlmeval.vlm.radfm import RadFM
+from vlmeval.vlm.biogpt import BioGPT
 
 
 PandaGPT_ROOT = None
@@ -1710,6 +1711,8 @@ CustomMBMUModels = {
     "LLaVAStableLM": LLaVAStableLM,
     # "MedFlamingo": MedFlamingo,
     "VividMed": VividMed,
+    "RadFM": RadFM,
+    "BioGPT": BioGPT,
     # "HFCLIPScorer": HFCLIPScorer,
 }
 
