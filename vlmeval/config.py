@@ -6,12 +6,12 @@ import os, yaml, importlib
 from vlmeval.vlm.huatuo import HuatuoVision7b
 
 from vlmeval.vlm.huatuo import HuatuoVision34b
-from vlmeval.vlm.llava_tri import LLaVATriPretrained
 from vlmeval.vlm.llava_medmoe import LLaVAPhi, LLaVAStableLM
 from vlmeval.vlm.vividmed import VividMed
 from vlmeval.vlm.radfm import RadFM
 from vlmeval.vlm.biogpt import BioGPT
 from vlmeval.vlm.lingshu import Lingshu
+from vlmeval.vlm.medvlm_r1 import MedVLM_R1
 
 
 PandaGPT_ROOT = None
@@ -1707,7 +1707,6 @@ CustomMBMUModels = {
     "LLaVAMedLocal": LLaVAMedLocal,
     "HuatuoVision7b": HuatuoVision7b,
     "HuatuoVision34b": HuatuoVision34b,
-    "LLaVATriPretrained": LLaVATriPretrained,
     "LLaVAPhi": LLaVAPhi,
     "LLaVAStableLM": LLaVAStableLM,
     # "MedFlamingo": MedFlamingo,
@@ -1715,6 +1714,7 @@ CustomMBMUModels = {
     "RadFM": RadFM,
     "BioGPT": BioGPT,
     "Lingshu": Lingshu,
+    "MedVLM_R1": MedVLM_R1,
     # "HFCLIPScorer": HFCLIPScorer,
 }
 
