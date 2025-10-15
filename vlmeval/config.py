@@ -8,7 +8,6 @@ from vlmeval.vlm.huatuo import HuatuoVision7b
 from vlmeval.vlm.huatuo import HuatuoVision34b
 from vlmeval.vlm.llava_medmoe import LLaVAPhi, LLaVAStableLM
 from vlmeval.vlm.vividmed import VividMed
-from vlmeval.vlm.radfm import RadFM
 from vlmeval.vlm.biogpt import BioGPT
 from vlmeval.vlm.lingshu import Lingshu
 from vlmeval.vlm.medvlm_r1 import MedVLM_R1
@@ -71,7 +70,7 @@ ungrouped = {
     "medflamingo" : partial(
         OpenFlamingo,
         name="v2",
-        mpt_pth="anas-awadalla/mpt-7b",
+        mpt_pth="huggyllama/llama-7b",
         ckpt_pth="med-flamingo/med-flamingo"
     ),
     "VisualGLM_6b": partial(VisualGLM, model_path="THUDM/visualglm-6b"),
@@ -1709,18 +1708,11 @@ CustomMBMUModels = {
     "HuatuoVision34b": HuatuoVision34b,
     "LLaVAPhi": LLaVAPhi,
     "LLaVAStableLM": LLaVAStableLM,
-    # "MedFlamingo": MedFlamingo,
     "VividMed": VividMed,
-    "RadFM": RadFM,
     "BioGPT": BioGPT,
     "Lingshu": Lingshu,
     "MedVLM_R1": MedVLM_R1,
-    # "HFCLIPScorer": HFCLIPScorer,
 }
-
-# def _import_by_path(dotted: str):
-#     mod, cls = dotted.rsplit(".", 1)
-#     return getattr(importlib.import_module(mod), cls)
 
 def load_models_from_yaml(yaml_path: str):
     if not os.path.exists(yaml_path):
@@ -1730,7 +1722,7 @@ def load_models_from_yaml(yaml_path: str):
     for m in cfg.get("models", []):
         name = m.pop("name")
         cls_id = m.pop("cls")
-        Cls = CustomMBMUModels.get(cls_id) #or _import_by_path(cls_id)
+        Cls = CustomMBMUModels.get(cls_id)
         out[name] = partial(Cls, **m)
     return out
 

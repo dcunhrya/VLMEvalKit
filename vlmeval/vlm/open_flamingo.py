@@ -22,8 +22,8 @@ class OpenFlamingo(BaseModel):
                  dtype="bf16",
                  device_map="auto",
                  device="cuda",
+                 max_new_tokens=64,
                  offload_folder="/home/ubuntu/hf_offload",
-                 max_memory={"cuda:0": "38GiB", "cpu": "64GiB"},
                  **kwargs):
 
         if mpt_pth is None:
@@ -99,10 +99,6 @@ class OpenFlamingo(BaseModel):
                 hf_hub_download(repo_id="med-flamingo/med-flamingo", filename="model.pt")
         torch.cuda.empty_cache()
         model = model.to(dtype=torch_dtype).cuda()
-        # dispatch_kwargs = dict(device_map=device_map)
-        # if max_memory:
-        #     dispatch_kwargs["max_memory"] = max_memory
-        # model = dispatch_model(model,device_map="auto",offload_dir=offload_folder, **dispatch_kwargs)
         self.model = model.to(device=self.device, dtype=torch_dtype)
         torch.cuda.empty_cache()
         self.model = self.model.eval()
@@ -113,9 +109,9 @@ class OpenFlamingo(BaseModel):
             self.tokenizer.pad_token = self.tokenizer.eos_token
         self.image_proc = image_processor
 
-        kwargs_default = dict(max_new_tokens=64, 
+        kwargs_default = dict(max_new_tokens=max_new_tokens, 
                               min_new_tokens=1,
-                              temperature=0.0,
+                              temperature=0.1,
                               top_p=1.0,
 
                               num_beams=3)
@@ -136,7 +132,7 @@ class OpenFlamingo(BaseModel):
         prompt += 'Answer: '
         vision_x = torch.cat(vision_x, dim=0) if len(vision_x) > 1 else vision_x[0]
         vision_x = vision_x.unsqueeze(1).unsqueeze(0)
-        vdtype = next(self.model.vision_encoder.parameters()).dtype  # e.g., torch.bfloat16
+        vdtype = next(self.model.vision_encoder.parameters()).dtype
         vision_x = vision_x.to(device="cuda", dtype=vdtype, non_blocking=True)      
         lang_x = self.tokenizer([prompt], return_tensors='pt')
         generated_text = self.model.generate(
