@@ -8,7 +8,6 @@ huggingface_hub
 imageio
 ipdb
 json_repair
-matplotlib
 nltk
 numpy
 omegaconf
