@@ -29,7 +29,7 @@ class HuatuoVision7b(BaseModel):
             print(f"[INFO] Using local ModelScope cache at: {local_path}")
             self.model_id = local_path
 
-        self.bot = HuatuoChatbot(path)
+        self.bot = HuatuoChatbot(self.model_id)
         self.bot.gen_kwargs = {
             'max_new_tokens': max_new_tokens,
             'min_new_tokens': min_new_tokens,
