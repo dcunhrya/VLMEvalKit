@@ -24,7 +24,7 @@ class HuatuoVision7b(BaseModel):
                  **kwargs):
         super().__init__(**kwargs)
 
-        local_path = os.path.expanduser(f"~/.cache/modelscope/hub/models{path}")
+        local_path = os.path.expanduser(f"~/.cache/modelscope/hub/models/{path}")
         if os.path.isdir(local_path):
             print(f"[INFO] Using local ModelScope cache at: {local_path}")
             self.model_id = local_path
