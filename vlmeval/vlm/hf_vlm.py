@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 from PIL import Image
 import torch
 import inspect
+import os
 
 from transformers import (
     AutoProcessor, AutoTokenizer, AutoImageProcessor,
@@ -32,6 +33,11 @@ class HuggingFaceVisionVLM(BaseModel):
         self.top_p = top_p
         self.device = device
         self.use_device_map = use_device_map
+
+        local_path = os.path.expanduser(f"~/.cache/modelscope/{path}")
+        if os.path.isdir(local_path):
+            print(f"[INFO] Using local ModelScope cache at: {local_path}")
+            self.model_id = local_path
 
         # dtype
         if dtype == "auto":
