@@ -26,7 +26,7 @@ class HuatuoVision7b(BaseModel):
 
         local_path = os.path.expanduser(f"~/.cache/modelscope/hub/models/{path}")
         if os.path.isdir(local_path):
-            print(f"[INFO] Using local ModelScope cache at: {local_path}")
+            # print(f"[INFO] Using local ModelScope cache at: {local_path}")
             self.model_id = local_path
         else:
             self.model_id = path
@@ -57,7 +57,15 @@ class HuatuoVision34b(BaseModel):
                  top_p: float = 1.0,
                  **kwargs):
         super().__init__(**kwargs)
-        self.bot = HuatuoChatbot(path)
+
+        local_path = os.path.expanduser(f"~/.cache/modelscope/hub/models/{path}")
+        if os.path.isdir(local_path):
+            # print(f"[INFO] Using local ModelScope cache at: {local_path}")
+            self.model_id = local_path
+        else:
+            self.model_id = path
+
+        self.bot = HuatuoChatbot(self.model_id)
         self.bot.gen_kwargs = {
             'max_new_tokens': max_new_tokens,
             'min_new_tokens': min_new_tokens,
