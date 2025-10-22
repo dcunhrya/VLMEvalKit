@@ -28,6 +28,8 @@ class HuatuoVision7b(BaseModel):
         if os.path.isdir(local_path):
             print(f"[INFO] Using local ModelScope cache at: {local_path}")
             self.model_id = local_path
+        else:
+            self.model_id = path
 
         self.bot = HuatuoChatbot(self.model_id)
         self.bot.gen_kwargs = {
