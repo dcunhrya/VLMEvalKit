@@ -23,6 +23,12 @@ class HuatuoVision7b(BaseModel):
                  top_p: float = 1.0,
                  **kwargs):
         super().__init__(**kwargs)
+
+        local_path = os.path.expanduser(f"~/.cache/modelscope/hub/models{path}")
+        if os.path.isdir(local_path):
+            print(f"[INFO] Using local ModelScope cache at: {local_path}")
+            self.model_id = local_path
+
         self.bot = HuatuoChatbot(path)
         self.bot.gen_kwargs = {
             'max_new_tokens': max_new_tokens,
