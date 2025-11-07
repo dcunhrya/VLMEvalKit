@@ -7,3 +7,6 @@
 [submodule "LLavaMed"]
 	path = LLavaMed
 	url = https://github.com/microsoft/LLaVA-Med
+[submodule "DeepSeek-VL"]
+	path = DeepSeek-VL
+	url = https://github.com/deepseek-ai/DeepSeek-VL
