@@ -11,7 +11,7 @@ class Lingshu7(BaseModel):
                  path: str = "lingshu-medical-mllm/Lingshu-7B",
                  device: str = "cuda",
                  dtype: str = "fp16",
-                 max_new_tokens: int = 64,
+                 max_new_tokens: int = 32,
                  temperature: float = 0.7,
                  top_p: float = 0.9,
                  **kwargs):
@@ -87,7 +87,7 @@ class Lingshu32(BaseModel):
                  path: str = "lingshu-medical-mllm/Lingshu-32B",
                  device: str = "cuda",
                  dtype: str = "fp16",
-                 max_new_tokens: int = 128,
+                 max_new_tokens: int = 32,
                  temperature: float = 0.7,
                  top_p: float = 0.9,
                  **kwargs):
@@ -105,6 +105,7 @@ class Lingshu32(BaseModel):
             path,
             torch_dtype=self.torch_dtype,
             device_map="auto",
+            attn_implementation="flash_attention_2",
             trust_remote_code=True
         ).eval()
 

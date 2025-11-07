@@ -227,7 +227,7 @@ class ImageMCQDataset(ImageBaseDataset):
         conf = CONF_PATTERN.search(output)
         return {
             "prediction": ans.group(1) if ans else None,
-            "confidence": conf.group(1) if conf else None,
+            "confidence": float(conf.group(1)) if conf and conf.group(1).replace('.', '', 1).isdigit() else None
         }
     
     def build_prompt(self, line):

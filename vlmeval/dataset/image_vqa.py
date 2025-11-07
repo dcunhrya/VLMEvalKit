@@ -65,7 +65,10 @@ class ImageVQADataset(ImageBaseDataset):
 
         # Extract confidence
         conf_match = CONF_PATTERN.search(output)
-        confidence = conf_match.group(1) if conf_match else None
+        try:
+            confidence = conf_match.group(1) if conf_match else None
+        except:
+            confidence = None
 
         # Extract the first alphabetic word or phrase
         word_match = WORD_PATTERN.search(output)
@@ -551,7 +554,7 @@ class Seg_guess_mask_Open(ImageVQADataset):
 
         return {
             "polygon": polygon_match.group(1) if polygon_match else None,
-            "confidence": float(conf_match.group(1)) if conf_match else None,
+            "confidence": float(conf.group(1)) if conf and conf.group(1).replace('.', '', 1).isdigit() else None
         }
 
 class Seg_with_mask_Open(ImageVQADataset):

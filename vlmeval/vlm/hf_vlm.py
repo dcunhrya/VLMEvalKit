@@ -242,7 +242,7 @@ class MedGemma4(BaseModel):
     
 class MedGemma27(BaseModel):
     def __init__(self,
-                 path: str = "google/medgemma-27b-it",
+                 path: str = "google/gemma-3-27b-it",
                  device: str = "cuda",        # "cuda" | "cuda:0" | "cpu" | "mps"
                  dtype: str = "auto",
                  max_new_tokens: int = 128,
@@ -329,10 +329,13 @@ class MedGemma27(BaseModel):
         # If NOT sharded, place on a single device explicitly.
         # IMPORTANT: never call .to() when using device_map="auto".
         if not do_shard:
-            if device == "cuda" and torch.cuda.is_available():
-                self.model.to("cuda:0")
-            elif device.startswith("cuda") and torch.cuda.is_available():
-                self.model.to(device)
+            if torch.cuda.is_available() and device.startswith("cuda"):
+                # allow comma-separated devices like "cuda:0,1"
+                if "," in device:
+                    self.model = torch.nn.DataParallel(self.model)
+                    self.model.to("cuda")
+                else:
+                    self.model.to(device if device != "cuda" else "cuda:0")
             elif device == "mps" and torch.backends.mps.is_available():
                 self.model.to("mps")
             else:
