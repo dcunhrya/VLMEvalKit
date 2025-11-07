@@ -10,6 +10,6 @@
 [submodule "DeepSeek-VL"]
 	path = DeepSeek-VL
 	url = https://github.com/deepseek-ai/DeepSeek-VL
-[submodule "DeepSeek-VL"2]
+[submodule "DeepSeek-VL2"]
 	path = DeepSeek-VL2
 	url = https://github.com/deepseek-ai/DeepSeek-VL2
