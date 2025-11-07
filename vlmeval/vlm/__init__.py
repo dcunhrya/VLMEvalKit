@@ -3,7 +3,6 @@ import torch
 torch.set_grad_enabled(False)
 torch.manual_seed(1234)
 
-from .hf_vlm import HuggingFaceVisionVLM
 from .llava_med import LLaVAMedLocal
 from .aria import Aria
 from .base import BaseModel
@@ -38,6 +37,7 @@ from .open_flamingo import OpenFlamingo
 from .pandagpt import PandaGPT
 from .qwen_vl import QwenVL, QwenVLChat
 from .qwen2_vl import Qwen2VLChat, Qwen2VLChatAguvis
+from .qwen3_vl import Qwen3VLChat
 from .transcore_m import TransCoreM
 from .visualglm import VisualGLM
 from .xcomposer import (

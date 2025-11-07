@@ -161,3 +161,15 @@ class PathVQA_TEST(ImageShortQADataset):
     DATASET_MD5 = {
         'PathVQA_TEST': None,
     }
+
+class VQARAD_TEST(ImageShortQADataset):
+    DATASET_URL = {
+        'VQARAD_TEST': 'https://huggingface.co/datasets/flaviagiammarino/vqa-rad/resolve/main/VQARAD_TEST.tsv',
+    }
+    DATASET_MD5 = {'VQARAD_TEST': None}
+
+class SLAKE_TEST(ImageShortQADataset):
+    DATASET_URL = {
+        'SLAKE_TEST': 'https://huggingface.co/datasets/BoKelvin/SLAKE/resolve/main/SLAKE_TEST.tsv',
+    }
+    DATASET_MD5 = {'SLAKE_TEST': None}

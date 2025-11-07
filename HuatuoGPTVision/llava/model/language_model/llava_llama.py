@@ -44,7 +44,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
     config_class = LlavaConfig
 
     def __init__(self, config, init_vision_encoder_from_ckpt=False):
-        config._attn_implementation = "sdpa"
+        config._attn_implementation = "flash_attention_2" #use sdpa if not broken
         config._flash_attn_2_enabled = True
         super(LlamaForCausalLM, self).__init__(config)
         self.model = LlavaLlamaModel(config)

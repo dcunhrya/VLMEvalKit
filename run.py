@@ -2,7 +2,61 @@ import json
 import os
 import subprocess
 from functools import partial
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 
+import torch
+
+# Workaround for Transformers >=4.56 buggy torch feature check
+if not hasattr(torch, "logical_or"):
+    torch.logical_or = lambda a, b: a | b
+if not hasattr(torch, "logical_and"):
+    torch.logical_and = lambda a, b: a & b
+
+# import wandb, psutil, torch, threading, time
+
+
+# def monitor_system_metrics(interval=5):
+#     """Continuously log CPU/GPU utilization to W&B in a background thread."""
+#     while True:
+#         run = wandb.run
+#         # Exit if no run or run has finished
+#         if run is None or getattr(run, "finished", False):
+#             break
+
+#         # --- collect metrics ---
+#         gpu_mem = torch.cuda.memory_allocated() / 1e9 if torch.cuda.is_available() else 0
+#         gpu_util = 0
+#         try:
+#             # torch.cuda.utilization() is only in some builds
+#             if torch.cuda.is_available() and hasattr(torch.cuda, "utilization"):
+#                 gpu_util = torch.cuda.utilization(0)
+#         except Exception:
+#             pass
+
+#         cpu = psutil.cpu_percent()
+#         ram = psutil.virtual_memory().percent
+
+#         wandb.log({
+#             "cpu_percent": cpu,
+#             "ram_percent": ram,
+#             "gpu_mem_GB": gpu_mem,
+#             "gpu_util_percent": gpu_util,
+#         })
+#         time.sleep(interval)
+
+
+# def setup_wandb_run(model_name, dataset_name):
+#     """Initialize a W&B run for VLMEvalKit inference tracking."""
+#     wandb.init(
+#         project="vlmevalkit-eval",
+#         name=f"{model_name}-{dataset_name}",
+#         config={
+#             "model": model_name,
+#             "dataset": dataset_name,
+#         },
+#         monitor_gym=True,  # enables system metric collection automatically
+#     )
 
 # GET the number of GPUs on the node without importing libs like torch
 def get_gpu_list():
@@ -213,10 +267,7 @@ def main():
         args.data = list(cfg['data'].keys())
     else:
         if not args.data:
-            if args.data_file:
-                args.data = ['MICROBENCH']
-            else:
-                raise AssertionError('--data should be provided unless a --config file is used or --data-file is set.')
+            raise AssertionError('--data should be provided unless a --config file is used or --data-file is set.')
 
     if RANK == 0:
         if not args.reuse:
@@ -277,7 +328,8 @@ def main():
                 dist.barrier()
 
             try:
-                pred_format = get_pred_file_format()
+                # pred_format = get_pred_file_format()
+                pred_format = 'xlsx'
                 result_file_base = f'{model_name}_{dataset_name}.{pred_format}'
 
                 if use_config:
@@ -293,7 +345,7 @@ def main():
                     dataset_kwargs = {}
                     if dataset_name in ['MMLongBench_DOC', 'DUDE', 'DUDE_MINI', 'SLIDEVQA', 'SLIDEVQA_MINI']:
                         dataset_kwargs['model'] = model_name
-                    if args.data_file and dataset_name in ['MICROBENCH']:
+                    if args.data_file:
                         dataset_kwargs['data_file'] = args.data_file
 
                     # If distributed, first build the dataset on the main process for doing preparation works
@@ -322,6 +374,8 @@ def main():
                 if model is None:
                     model = model_name  # which is only a name
 
+                # setup_wandb_run('Qwen', 'Multi-Cls')
+
                 if args.model != "eval":
                     # Perform the Inference
                     if dataset.MODALITY == 'VIDEO':
@@ -345,6 +399,9 @@ def main():
                             ignore_failed=args.ignore,
                             use_vllm=args.use_vllm)
                     else:
+                        # setup_wandb_run(model_name, 'Multi-Cls')
+                        # threading.Thread(target=monitor_system_metrics, daemon=True).start()
+                        # start = time.time()
                         model = infer_data_job(
                             model,
                             work_dir=pred_root,
@@ -354,6 +411,8 @@ def main():
                             api_nproc=args.api_nproc,
                             ignore_failed=args.ignore,
                             use_vllm=args.use_vllm)
+                        # wandb.log({"total_inference_time_s": time.time() - start})
+                        # wandb.finish()
 
                 # Set the judge kwargs first before evaluation or dumping
 

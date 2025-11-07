@@ -240,7 +240,22 @@ def infer_data_job(
             data['prediction'] = [x[0] for x in tups]
             data['thinking'] = [x[1] for x in tups]
         else:
-            data['prediction'] = [str(data_all[x]) for x in data['index']]
+            # data['prediction'] = [str(data_all[x]) for x in data['index']]
+            if hasattr(dataset, "post_process"):
+                preds, confs = [], []
+                for x in data['index']:
+                    processed = dataset.post_process(data_all[x])
+                    if isinstance(processed, dict):
+                        preds.append(processed.get("prediction"))
+                        confs.append(processed.get("confidence"))
+                    else:
+                        preds.append(str(processed))
+                        confs.append(None)
+                data["prediction"] = preds
+                data["confidence"] = confs
+            else:
+                # fallback (original behavior)
+                data['prediction'] = [str(data_all[x]) for x in data['index']]
         if 'image' in data:
             data.pop('image')
 

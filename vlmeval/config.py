@@ -3,14 +3,13 @@ from vlmeval.api import *
 from functools import partial
 import os, yaml, importlib
 
-from vlmeval.vlm.huatuo import HuatuoVision7b
-
-from vlmeval.vlm.huatuo import HuatuoVision34b
+from vlmeval.vlm.huatuo import HuatuoVision7b, HuatuoVision34b
 from vlmeval.vlm.llava_medmoe import LLaVAPhi, LLaVAStableLM
 from vlmeval.vlm.vividmed import VividMed
 from vlmeval.vlm.biogpt import BioGPT
-from vlmeval.vlm.lingshu import Lingshu
+from vlmeval.vlm.lingshu import Lingshu7, Lingshu32
 from vlmeval.vlm.medvlm_r1 import MedVLM_R1
+from vlmeval.vlm.hf_vlm import MedGemma4, MedGemma27
 
 
 PandaGPT_ROOT = None
@@ -1485,6 +1484,72 @@ qwen2vl_series = {
     ),
 }
 
+qwen3vl_series = {
+    "Qwen3-VL-235B-A22B-Instruct": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-235B-A22B-Instruct",
+        use_custom_prompt=False,
+        use_vllm=True,
+        temperature=0.0, 
+        max_new_tokens=32768
+    ),
+    "Qwen3-VL-235B-A22B-Thinking": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-235B-A22B-Thinking",
+        use_custom_prompt=False,
+        use_vllm=True,
+        temperature=0.0, 
+        max_new_tokens=32768
+    ),
+    "Qwen3-VL-30B-A3B-Instruct": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-30B-A3B-Instruct",
+        use_custom_prompt=False,
+        use_vllm=True,
+        temperature=0.0, 
+        max_new_tokens=32768
+    ),
+    "Qwen3-VL-30B-A3B-Thinking": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-30B-A3B-Thinking",
+        use_custom_prompt=False,
+        use_vllm=True,
+        temperature=0.0, 
+        max_new_tokens=32768
+    ),
+    "Qwen3-VL-8B-Thinking": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-8B-Thinking",
+        use_custom_prompt=False,
+        temperature=0.7, 
+        max_new_tokens=16384
+    ),
+    "Qwen3-VL-4B-Thinking": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-4B-Thinking",
+        use_custom_prompt=False,
+        temperature=0.7, 
+        max_new_tokens=16384
+    ),
+    "Qwen3-VL-8B-Instruct": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-8B-Instruct",
+        use_custom_prompt=False,
+        use_vllm=True,
+        temperature=0.7, 
+        max_new_tokens=16384,
+    ),
+    "Qwen3-VL-4B-Instruct": partial(
+        Qwen3VLChat,
+        model_path="Qwen/Qwen3-VL-4B-Instruct",
+        use_custom_prompt=False,
+        use_vllm=True,
+        temperature=0.7, 
+        max_new_tokens=16384
+    ),
+    
+}
+
 slime_series = {
     "Slime-7B": partial(SliME, model_path="yifanzhang114/SliME-vicuna-7B"),
     "Slime-8B": partial(SliME, model_path="yifanzhang114/SliME-Llama3-8B"),
@@ -1691,7 +1756,7 @@ model_groups = [
     idefics_series, instructblip_series, deepseekvl_series, deepseekvl2_series, 
     janus_series, minicpm_series, cogvlm_series, wemm_series, cambrian_series, 
     chameleon_series, video_models, ovis_series, vila_series, mantis_series,
-    mmalaya_series, phi3_series, phi4_series, xgen_mm_series, qwen2vl_series,
+    mmalaya_series, phi3_series, phi4_series, xgen_mm_series, qwen2vl_series, qwen3vl_series,
     slime_series, eagle_series, moondream_series, llama_series, molmo_series,
     kosmos_series, points_series, nvlm_series, vintern_series, h2ovl_series,
     aria_series, smolvlm_series, sail_series, valley_series, vita_series,
@@ -1702,7 +1767,8 @@ model_groups = [
 
 
 CustomMBMUModels = {
-    "HuggingFaceVisionVLM": HuggingFaceVisionVLM,
+    "MedGemma4": MedGemma4,
+    "MedGemma27": MedGemma27,
     "LLaVAMedLocal": LLaVAMedLocal,
     "HuatuoVision7b": HuatuoVision7b,
     "HuatuoVision34b": HuatuoVision34b,
@@ -1710,7 +1776,8 @@ CustomMBMUModels = {
     "LLaVAStableLM": LLaVAStableLM,
     "VividMed": VividMed,
     "BioGPT": BioGPT,
-    "Lingshu": Lingshu,
+    "Lingshu7": Lingshu7,
+    "Lingshu32": Lingshu32,
     "MedVLM_R1": MedVLM_R1,
 }
 

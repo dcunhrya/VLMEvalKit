@@ -1,6 +1,7 @@
 import torch
 import inspect
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 from vlmeval.vlm.base import BaseModel
 import os
 

@@ -1,12 +1,16 @@
 from datetime import date
 import re
 import warnings
+import ast
 
 from .image_base import ImageBaseDataset
 from .utils import build_judge, DEBUG_MESSAGE
 from ..smp import *
 import pandas as pd
 from tqdm import tqdm
+
+ANSWER_PATTERN = re.compile(r"\b([A-E])\b")
+CONF_PATTERN = re.compile(r"confidence[:\s]*([0-9.]+)", re.IGNORECASE)
 
 MMMB_URLS = {
     'MMMB_ar': 'https://huggingface.co/datasets/AIDC-AI/Parrot-dataset/resolve/main/mmmb/mmmb_ar.tsv',
@@ -38,6 +42,28 @@ MTL_MMBench_MD5 = {
     'MMBench_dev_tr': '4fab39d501389d3d6cc90264bb708f11', 'MMBench_dev_ru': '5ba1171ff2e68f80637bf78349e402a5'
 }
 
+def format_options(options_str: str) -> str:
+    """
+    Convert a string like:
+    "['A) melanoma_1', 'B) seborrheic_keratosis_0', ...]"
+    → 
+    "Options:\nA. melanoma_1\nB. seborrheic_keratosis_0\n..."
+    """
+    try:
+        options_list = ast.literal_eval(options_str)
+    except Exception as e:
+        print(f"⚠️ Could not parse options: {e}")
+        return "Options:\n"
+
+    formatted = "Options:\n"
+    for opt in options_list:
+        if ")" in opt:
+            key, val = opt.split(")", 1)
+            formatted += f"{key.strip()}. {val.strip()}\n"
+        else:
+            formatted += f"{opt.strip()}\n"
+
+    return formatted
 
 class ImageMCQDataset(ImageBaseDataset):
 
@@ -194,6 +220,16 @@ class ImageMCQDataset(ImageBaseDataset):
     DATASET_MD5.update(MMMB_MD5)
     DATASET_MD5.update(MTL_MMBench_MD5)
 
+    def post_process(self, output):
+        output = str(output)
+        # print(f'OUTPUT IS {output}')
+        ans = ANSWER_PATTERN.search(output)
+        conf = CONF_PATTERN.search(output)
+        return {
+            "prediction": ans.group(1) if ans else None,
+            "confidence": conf.group(1) if conf else None,
+        }
+    
     def build_prompt(self, line):
 
         if isinstance(line, int):
@@ -220,7 +256,7 @@ class ImageMCQDataset(ImageBaseDataset):
         prompt += f'Question: {question}\n'
         if len(options):
             prompt += options_prompt
-            prompt += 'Please select the correct answer from the options above. \n'
+            # prompt += 'Please select the correct answer from the options above. \n'
 
         msgs = []
         if isinstance(tgt_path, list):
@@ -415,6 +451,35 @@ class ImageMCQDataset(ImageBaseDataset):
 
         data['verifier_score'] = verifier_scores
         data['verifier_match'] = verifier_matches
+
+        B = 1000
+        rng = np.random.default_rng(42)
+
+        # --- Compute bootstrap distribution of accuracy ---
+        matches = np.array(data['verifier_match'])
+        n = len(matches)
+        boot_acc = np.empty(B)
+        for b in range(B):
+            sample_idx = rng.integers(0, n, size=n)
+            boot_acc[b] = matches[sample_idx].mean()
+
+        acc_mean = matches.mean()
+        ci_lower, ci_upper = np.percentile(boot_acc, [2.5, 97.5])
+
+        summary = {
+            "mean_accuracy": float(acc_mean),
+            "ci_lower": float(ci_lower),
+            "ci_upper": float(ci_upper),
+        }
+
+        # print(f"\nVerifier accuracy: {acc_mean:.3f} (95% CI: {ci_lower:.3f}–{ci_upper:.3f})")
+
+        data.attrs = summary
+
+        import json, os
+        summary_path = get_intermediate_file_path(eval_file, "_verifier_bootstrap_summary")
+        with open(summary_path, "w") as f:
+            json.dump(summary, f, indent=2)
 
         detailed_result_file = get_intermediate_file_path(eval_file, '_detailed_results')
         dump(data, detailed_result_file)
@@ -706,41 +771,44 @@ class GMAIMMBenchDataset(ImageMCQDataset):
 
     DATASET_URL = {
         'GMAI-MMBench_VAL': 'https://huggingface.co/datasets/VLMEval/GMAI-MMBench/resolve/main/GMAI-MMBench_VAL.tsv',
-        'GMAI_mm_bench_TEST_part_1': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_1.tsv',  # noqa: E501
-        'GMAI_mm_bench_TEST_part_2': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_2.tsv',  # noqa: E501
-        'GMAI_mm_bench_TEST_part_3': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_3.tsv',  # noqa: E501
-        'GMAI_mm_bench_TEST_part_4': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_4.tsv',  # noqa: E501
-        'GMAI_mm_bench_TEST_part_5': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_5.tsv',  # noqa: E501
-        'GMAI_mm_bench_TEST_part_6': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_6.tsv',  # noqa: E501
-        'GMAI_mm_bench_TEST_part_7': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_7.tsv',  # noqa: E501
-        'GMAI_mm_bench_TEST_part_8': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_8.tsv',  # noqa: E501
-        'GMAI_mm_bench_TEST_part_9': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_9.tsv',  # noqa: E501
-        'GMAI_mm_bench_TEST_part_10': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_10.tsv',  # noqa: E501
-        'GMAI_mm_bench_TEST_part_11': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_11.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_1': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_1.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_2': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_2.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_3': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_3.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_4': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_4.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_5': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_5.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_6': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_6.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_7': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_7.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_8': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_8.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_9': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_9.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_10': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_10.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_11': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_11.tsv',  # noqa: E501
     }
 
     DATASET_MD5 = {
         'GMAI-MMBench_VAL': '254bd581627866f1c499d3d6b4422324',
-        'GMAI_mm_bench_TEST_part_1': '900d735231230a63f4ed45665c078ef4',
-        'GMAI_mm_bench_TEST_part_2': '1b27ab621386945d7e4a765ad2d22b0e',
-        'GMAI_mm_bench_TEST_part_3': '44bdc2b6267dd505d529b8cad06f0fb2',
-        'GMAI_mm_bench_TEST_part_4': '5a04a04fcac9f1466709f242fdb80acb',
-        'GMAI_mm_bench_TEST_part_5': 'c70baf8909eda9af0ddeab275c721336',
-        'GMAI_mm_bench_TEST_part_6': '825abc39596b644dead9350d0cfa3b96',
-        'GMAI_mm_bench_TEST_part_7': 'defb8aed2fb77365a76b6b9abd6a2701',
-        'GMAI_mm_bench_TEST_part_8': 'ff490d60b85f2bb0abb67a435b298c65',
-        'GMAI_mm_bench_TEST_part_9': 'ff67c86f40da93b09139ac1d1ba5dc6b',
-        'GMAI_mm_bench_TEST_part_10': '3dae94627b9ac0fe00180d4780fbf6dc',
-        'GMAI_mm_bench_TEST_part_11': 'd08dc813f0eb6bbab63cae2a9d113c4b',
+        # 'GMAI_mm_bench_TEST_part_1': '900d735231230a63f4ed45665c078ef4',
+        # 'GMAI_mm_bench_TEST_part_2': '1b27ab621386945d7e4a765ad2d22b0e',
+        # 'GMAI_mm_bench_TEST_part_3': '44bdc2b6267dd505d529b8cad06f0fb2',
+        # 'GMAI_mm_bench_TEST_part_4': '5a04a04fcac9f1466709f242fdb80acb',
+        # 'GMAI_mm_bench_TEST_part_5': 'c70baf8909eda9af0ddeab275c721336',
+        # 'GMAI_mm_bench_TEST_part_6': '825abc39596b644dead9350d0cfa3b96',
+        # 'GMAI_mm_bench_TEST_part_7': 'defb8aed2fb77365a76b6b9abd6a2701',
+        # 'GMAI_mm_bench_TEST_part_8': 'ff490d60b85f2bb0abb67a435b298c65',
+        # 'GMAI_mm_bench_TEST_part_9': 'ff67c86f40da93b09139ac1d1ba5dc6b',
+        # 'GMAI_mm_bench_TEST_part_10': '3dae94627b9ac0fe00180d4780fbf6dc',
+        # 'GMAI_mm_bench_TEST_part_11': 'd08dc813f0eb6bbab63cae2a9d113c4b',
     }
 
     @classmethod
     def supported_datasets(cls):
         return ['GMAI-MMBench_VAL', 'GMAI-MMBench_TEST']
 
-    def load_data(self, dataset):
+    def load_data(self, dataset, data_file=None):
         if dataset == 'GMAI-MMBench_VAL':
-            data_path = osp.join(LMUDataRoot(), f'{dataset}.tsv')
+            if data_file:
+                data_path = osp.join(LMUDataRoot(), data_file)
+            else:
+                data_path = osp.join(LMUDataRoot(), f'{dataset}.tsv')
             if file_size(data_path, 'GB') > 1:
                 local_path = data_path.replace('.tsv', '_local.tsv')
                 if not osp.exists(local_path) or os.environ.get('FORCE_LOCAL'):
@@ -852,6 +920,158 @@ class GMAIMMBenchDataset(ImageMCQDataset):
 
         return acc
 
+class GMAIMMBenchDataset_Basic(ImageMCQDataset):
+
+    DATASET_URL = {
+        'GMAI-MMBench_VAL': 'https://huggingface.co/datasets/VLMEval/GMAI-MMBench/resolve/main/GMAI-MMBench_VAL.tsv',
+        # 'GMAI_mm_bench_TEST_part_1': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_1.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_2': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_2.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_3': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_3.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_4': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_4.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_5': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_5.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_6': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_6.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_7': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_7.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_8': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_8.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_9': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_9.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_10': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_10.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_11': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_11.tsv',  # noqa: E501
+    }
+
+    DATASET_MD5 = {
+        'GMAI-MMBench_VAL': '254bd581627866f1c499d3d6b4422324',
+        # 'GMAI_mm_bench_TEST_part_1': '900d735231230a63f4ed45665c078ef4',
+        # 'GMAI_mm_bench_TEST_part_2': '1b27ab621386945d7e4a765ad2d22b0e',
+        # 'GMAI_mm_bench_TEST_part_3': '44bdc2b6267dd505d529b8cad06f0fb2',
+        # 'GMAI_mm_bench_TEST_part_4': '5a04a04fcac9f1466709f242fdb80acb',
+        # 'GMAI_mm_bench_TEST_part_5': 'c70baf8909eda9af0ddeab275c721336',
+        # 'GMAI_mm_bench_TEST_part_6': '825abc39596b644dead9350d0cfa3b96',
+        # 'GMAI_mm_bench_TEST_part_7': 'defb8aed2fb77365a76b6b9abd6a2701',
+        # 'GMAI_mm_bench_TEST_part_8': 'ff490d60b85f2bb0abb67a435b298c65',
+        # 'GMAI_mm_bench_TEST_part_9': 'ff67c86f40da93b09139ac1d1ba5dc6b',
+        # 'GMAI_mm_bench_TEST_part_10': '3dae94627b9ac0fe00180d4780fbf6dc',
+        # 'GMAI_mm_bench_TEST_part_11': 'd08dc813f0eb6bbab63cae2a9d113c4b',
+    }
+
+    @classmethod
+    def supported_datasets(cls):
+        return ['GMAI-MMBench_VAL', 'GMAI-MMBench_TEST']
+
+    def load_data(self, dataset, data_file=None):
+        if dataset == 'GMAI-MMBench_VAL':
+            if data_file:
+                data_path = osp.join(LMUDataRoot(), data_file)
+            else:
+                data_path = osp.join(LMUDataRoot(), f'{dataset}.tsv')
+            if file_size(data_path, 'GB') > 1:
+                local_path = data_path.replace('.tsv', '_local.tsv')
+                if not osp.exists(local_path) or os.environ.get('FORCE_LOCAL'):
+                    from ..tools import LOCALIZE
+                    LOCALIZE(data_path, local_path)
+                data_path = local_path
+            return load(data_path)
+        elif dataset == 'GMAI-MMBench_TEST':
+            dfs = []
+            for part_num in range(1, 12):
+                part_name = f'GMAI_mm_bench_TEST_part_{part_num}'
+                url = self.DATASET_URL[part_name]
+                file_md5 = self.DATASET_MD5.get(part_name)
+                tsv_path = osp.join(LMUDataRoot(), f'{part_name}.tsv')
+                if not osp.exists(tsv_path) or (file_md5 and md5(tsv_path) != file_md5):
+                    download_file(url, filename=tsv_path)
+                local_path = tsv_path.replace('.tsv', '_local.tsv')
+                if not osp.exists(local_path) or os.environ.get('FORCE_LOCAL'):
+                    from ..tools import LOCALIZE
+                    LOCALIZE(tsv_path, local_path)
+                tsv_path = local_path
+                # 加载数据
+                df = load(tsv_path)
+                dfs.append(df)
+            # 合并所有数据
+            data = pd.concat(dfs, ignore_index=True)
+            return data
+        else:
+            raise ValueError(f"未知的数据集：{dataset}")
+
+    def report_acc_by_groups(self, df, group_column):
+        res = defaultdict(list)
+
+        # Check for the 'split' column
+        if 'split' in df:
+            splits = list(set(df['split']))
+            res['split'] = splits
+        else:
+            df['split'] = ['none'] * len(df)
+            res['split'] = ['none']
+
+        res['Overall'] = [np.mean(df[df['split'] == sp]['hit']) for sp in res['split']]
+
+        if group_column not in df:
+            raise ValueError(f"Column '{group_column}' not found in dataframe.")  # noqa: E713
+
+        abilities = list(set(df[group_column]))
+        abilities = ['None' if isinstance(ab, float) and pd.isna(ab) else ab for ab in abilities]
+        abilities.sort()
+
+        for ab in abilities:
+            ab_name = ab
+            sub_df = df[df[group_column] == ab]
+            res[ab_name] = [np.mean(sub_df[sub_df['split'] == sp]['hit']) for sp in res['split']]
+
+        return pd.DataFrame(res)
+
+    def evaluate(self, eval_file, **judge_kwargs):
+        from .utils.multiple_choice import report_acc, mcq_vanilla_eval
+        nproc = judge_kwargs.pop('nproc', 4)
+
+        suffix = eval_file.split('.')[-1]
+        model = judge_kwargs.get('model', 'exact_matching')
+        assert model in ['chatgpt-0125', 'exact_matching', 'gpt-4-0125']
+        name_str_map = {'chatgpt-0125': 'openai', 'gpt-4-0125': 'gpt4'}
+        name_str = name_str_map[model] if model in name_str_map else model
+
+        if model == 'exact_matching':
+            model = None
+        elif gpt_key_set():
+            model = build_judge(**judge_kwargs)
+            if not model.working():
+                warnings.warn('OPENAI API is not working properly, will use exact matching for evaluation')
+                warnings.warn(DEBUG_MESSAGE)
+                model = None
+        else:
+            warnings.warn('OPENAI_API_KEY is not set properly, will use exact matching for evaluation')
+            model = None
+
+        result_file = eval_file.replace(f'.{suffix}', f'_{name_str}_result.pkl')
+
+        data = load(eval_file)
+        data = data.sort_values(by='index')
+        data['prediction'] = [str(x) for x in data['prediction']]
+        # If not choice label, then use lower case
+        for k in data.keys():
+            data[k.lower() if k not in list(string.ascii_uppercase) else k] = data.pop(k)
+
+        meta = self.data
+        meta_q_map = {x: y for x, y in zip(meta['index'], meta['question'])}
+        data_map = {x: y for x, y in zip(data['index'], data['question'])}
+        for k in data_map:
+            assert k in meta_q_map, (
+                f'eval_file should be the same as or a subset of dataset {self.dataset_name}'
+            )
+
+        data = mcq_vanilla_eval(model, data, meta, nproc, result_file, self.dataset_name)
+
+        # load split
+        dump(data, eval_file.replace(f'.{suffix}', f'_{name_str}_result.{suffix}'))
+        data = load(eval_file.replace(f'.{suffix}', f'_{name_str}_result.{suffix}'))
+
+        acc = report_acc(data)
+
+        for group_col in ['clinical vqa task', 'department', 'perceptual granularity']:
+            acc_grouped = self.report_acc_by_groups(data, group_col)
+            score_file_grouped = eval_file.replace(f'.{suffix}', f'_{group_col}_acc.csv')
+            dump(acc_grouped, score_file_grouped)
+
+        return acc
 
 class MMERealWorld(ImageMCQDataset):
 
@@ -1849,28 +2069,205 @@ class MicroBench(ImageMCQDataset):
         'part_14': 'https://huggingface.co/datasets/xuxuxuxuxu/Microbench/resolve/main/part_14.tsv',
     }
 
-    def load_data(self, dataset="MicroBench", repo_id="xuxuxuxuxu/MicroBench"):
+    def load_data(self, dataset="MicroBench", data_file= None, repo_id="xuxuxuxuxu/MicroBench", ):
 
         dfs = []
-        for part_num in range(1, 15):
-            part_name = f'part_{part_num}'
-            url = self.DATASET_PART_URL[part_name]
-            tsv_path = osp.join(LMUDataRoot(), f'microbench_{part_name}.tsv')
-            if not osp.exists(tsv_path):
-                download_file(url, filename=tsv_path)
-            local_path = tsv_path.replace('.tsv', '_local.tsv')
-            if not osp.exists(local_path) or os.environ.get('FORCE_LOCAL'):
-                from ..tools import LOCALIZE
-                LOCALIZE(tsv_path, local_path)
-            tsv_path = local_path
-            # 加载数据
-            df = load(tsv_path)
-            dfs.append(df)
-        # 合并所有数据
-        data = pd.concat(dfs, ignore_index=True)
+        # for part_num in range(1,15):
+        #     part_name = f'part_{part_num}'
+        #     url = self.DATASET_PART_URL[part_name]
+        #     tsv_path = osp.join(LMUDataRoot(), f'microbench_{part_name}.tsv')
+        #     if not osp.exists(tsv_path):
+        #         download_file(url, filename=tsv_path)
+        #     local_path = tsv_path.replace('.tsv', '_local.tsv')
+        #     if not osp.exists(local_path) or os.environ.get('FORCE_LOCAL'):
+        #         from ..tools import LOCALIZE
+        #         LOCALIZE(tsv_path, local_path)
+        #     tsv_path = local_path
+        #     # 加载数据
+        #     df = load(tsv_path)
+        #     dfs.append(df)
+        # # 合并所有数据
+        # data = pd.concat(dfs, ignore_index=True)
+        # tsv_path = osp.join(LMUDataRoot(), 'microbench_subsampled_local.tsv')
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
         return data
 
+class MicroBench_Basic(ImageMCQDataset):
 
+    DATASET_URL = {'MicroBench': ''}
+
+    def load_data(self, dataset="MicroBench_Basic", data_file=None, repo_id="xuxuxuxuxu/MicroBench"):
+
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        return data
+
+class Seg_with_mask(ImageMCQDataset):
+    TYPE = 'MCQ'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Seg_with_mask']
+    
+    def load_data(self, dataset="Seg_with_mask", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["options"] = [format_options(opt) for opt in data["options"]]
+        data["prompt"] = ("Question: " + data["question"] + data["options"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+    
+class Seg_guess_mask(ImageMCQDataset):
+    TYPE = 'MCQ'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Seg_guess_mask']
+    
+    def load_data(self, dataset="Seg_guess_mask", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["options"] = [format_options(opt) for opt in data["options"]]
+        data["prompt"] = ("Question: " + data["question"] + data["options"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+  
+  
+class Cls(ImageMCQDataset):
+    TYPE = 'MCQ'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Cls']
+    
+    def load_data(self, dataset="Cls", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["options"] = [format_options(opt) for opt in data["options"]]
+        data["prompt"] = ("Question: " + data["question"] + data["options"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+
+        # if self.meta_only:
+        #     tgt_path = toliststr(line['image_path'])
+        # else:
+        #     tgt_path = self.dump_image(line)
+        tgt_path = toliststr(line['image_path'])
+
+        # question = line['question']
+        # options = line['options']
+        # options_prompt = 'Options:\n'
+        # options_prompt += f'{options}\n'
+        # hint = line['hint'] if ('hint' in line and not pd.isna(line['hint'])) else None
+        # prompt = ''
+        # if hint is not None:
+        #     prompt += f'Hint: {hint}\n'
+        # prompt += f'Question: {question}'
+        # if len(options):
+        #     prompt += options
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+
+class Det_grounding(ImageMCQDataset):
+    TYPE = 'MCQ'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Det_grounding']
+    
+    def load_data(self, dataset="Det_grounding", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["options"] = [format_options(opt) for opt in data["options"]]
+        data["prompt"] = ("Question: " + data["question"] + data["options"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+
+class Det_bbox(ImageMCQDataset):
+    TYPE = 'MCQ'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Det_bbox']
+    
+    def load_data(self, dataset="Det_bbox", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["options"] = [format_options(opt) for opt in data["options"]]
+        data["prompt"] = ("Question: " + data["question"] + data["options"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+    
 class XLRSBench(ImageMCQDataset):
 
     DATASET_URL = {'XLRS-Bench-lite': ''}

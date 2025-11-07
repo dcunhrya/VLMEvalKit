@@ -1,6 +1,6 @@
 import warnings
 
-from .microbench import MICROBENCH
+# from .microbench import MICROBENCH
 from .image_base import img_root_map, ImageBaseDataset
 from .image_caption import ImageCaptionDataset
 from .image_yorn import ImageYORNDataset
@@ -8,18 +8,21 @@ from .image_mcq import (
     ImageMCQDataset, MMMUDataset, CustomMCQDataset, MUIRDataset, GMAIMMBenchDataset, MMERealWorld, HRBenchDataset,
     NaturalBenchDataset, WeMath, MMMUProDataset, VMCBenchDataset, MedXpertQA_MM_test, LEGO, VisuLogic, CVBench, TDBench,
     MicroBench, OmniMedVQA, MSEarthMCQ, VLMBlind, SCAM, _3DSRBench, AffordanceDataset, OmniEarthMCQBench, XLRSBench,
-    TreeBench, CVQA, TopViewRS
+    TreeBench, CVQA, TopViewRS, MicroBench_Basic, Cls, GMAIMMBenchDataset_Basic, Det_grounding, Det_bbox,
+    Seg_guess_mask, Seg_with_mask
 )
 from .image_mt import MMDUDataset
 from .image_vqa import (
     ImageVQADataset, MathVision, OCRBench, MathVista, LLaVABench, LLaVABench_KO, VGRPBench, MMVet, MTVQADataset,
     TableVQABench, CustomVQADataset, CRPE, MathVerse, OlympiadBench, SeePhys, QSpatial, VizWiz, MMNIAH, LogicVista,
     MME_CoT, MMSci_Captioning, Physics_yale, TDBenchGrounding, WildDocBenchmark, OCR_Reasoning, PhyX, CountBenchQA,
-    ZEROBench, Omni3DBench, TallyQA, MMEReasoning, MMVMBench, BMMR, OCRBench_v2, AyaVisionBench
+    ZEROBench, Omni3DBench, TallyQA, MMEReasoning, MMVMBench, BMMR, OCRBench_v2, AyaVisionBench, MicroBench_Open, MicroBench_Open_Basic,
+    Cls_Open, Det_grounding_Open, Det_bbox_Open, Question_Cls, Question_Det, Question_GMAI, Question_Microbench, Question_Seg,
+    GMAIMMBenchDataset_Open, Seg_guess_mask_Open, Seg_with_mask_Open
 )
 
 from .image_ccocr import CCOCRDataset
-from .image_shortqa import ImageShortQADataset, PathVQA_VAL, PathVQA_TEST
+from .image_shortqa import ImageShortQADataset, PathVQA_VAL, PathVQA_TEST, VQARAD_TEST, SLAKE_TEST
 from .text_mcq import CustomTextMCQDataset, TextMCQDataset
 
 from .vcr import VCRDataset
@@ -206,7 +209,10 @@ IMAGE_DATASET = [
     ZEROBench, SCAM, Omni3DBench, TallyQA, _3DSRBench, BMMR, AffordanceDataset,
     MMEReasoning, GOBenchDataset, SFE, ChartMimic, MMVMBench, XLRSBench,
     OmniEarthMCQBench, VisFactor, OSTDataset, OCRBench_v2, TreeBench, CVQA, M4Bench,
-    AyaVisionBench, TopViewRS, VLMBias, MICROBENCH
+    AyaVisionBench, TopViewRS, VLMBias, MicroBench_Basic, MicroBench_Open, MicroBench_Open_Basic,
+    Cls, GMAIMMBenchDataset_Basic, Cls_Open, Det_grounding, Det_grounding_Open, GMAIMMBenchDataset_Open,
+    Det_bbox_Open, Det_bbox, VQARAD_TEST, SLAKE_TEST, Question_Cls, Question_Det, Question_GMAI, Question_Microbench, Question_Seg,
+    Seg_guess_mask, Seg_with_mask, Seg_guess_mask_Open, Seg_with_mask_Open
 ]
 
 VIDEO_DATASET = [

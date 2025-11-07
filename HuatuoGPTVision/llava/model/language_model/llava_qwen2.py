@@ -43,8 +43,8 @@ class LlavaQwen2ForCausalLM(Qwen2ForCausalLM, LlavaMetaForCausalLM):
     config_class = LlavaQwenConfig
 
     def __init__(self, config, init_vision_encoder_from_ckpt=False):
-        # config._attn_implementation = "flash_attention_2"
-        # config._flash_attn_2_enabled = True
+        config._attn_implementation = "flash_attention_2"
+        config._flash_attn_2_enabled = True
         super(Qwen2ForCausalLM, self).__init__(config)
         self.model = LlavaQwen2Model(config)
         # assert self.model._use_flash_attention_2 == True

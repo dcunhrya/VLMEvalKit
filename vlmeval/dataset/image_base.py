@@ -37,13 +37,16 @@ class ImageBaseDataset:
     DATASET_URL = {}
     DATASET_MD5 = {}
 
-    def __init__(self, dataset='MMBench', skip_noimg=True):
+    def __init__(self, dataset='MMBench', data_file=None, skip_noimg=True):
         ROOT = LMUDataRoot()
         # You can override this variable to save image files to a different directory
         self.dataset_name = dataset
         self.img_root = osp.join(ROOT, 'images', img_root_map(dataset))
 
-        data = self.load_data(dataset)
+        if data_file:
+            data = self.load_data(dataset, data_file)
+        else:
+            data = self.load_data(dataset)
         self.skip_noimg = skip_noimg
         if skip_noimg and 'image' in data:
             data = data[~pd.isna(data['image'])]
@@ -88,6 +91,7 @@ class ImageBaseDataset:
         update_flag = False
         file_name_legacy = url.split('/')[-1]
         file_name = f"{self.dataset_name}.tsv"
+
         data_path_legacy = osp.join(data_root, file_name_legacy)
         data_path = osp.join(data_root, file_name)
 
@@ -172,7 +176,7 @@ class ImageBaseDataset:
         return list(cls.DATASET_URL)
 
     # Given the dataset name, return the dataset as a pandas dataframe, can override
-    def load_data(self, dataset):
+    def load_data(self, dataset, data_file=None):
         url = self.DATASET_URL.get(dataset, None)
         if url is None or url == '':
             url = dataset + '.tsv'

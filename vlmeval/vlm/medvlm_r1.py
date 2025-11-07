@@ -33,11 +33,11 @@ class MedVLM_R1(BaseModel):
         path: str = "JZPeterPan/MedVLM-R1",
         device: str = "cuda",            # "cuda" | "cuda:0" | "cpu" | "mps"
         dtype: str = "bf16",             # "bf16" | "fp16" | "fp32" | "auto"
-        max_new_tokens: int = 1024,
+        max_new_tokens: int = 64,
         temperature: float = 0.0,        # paper/demo uses deterministic gen
         top_p: float = 1.0,
         use_device_map: bool = True,
-        attn_impl: str = "sdpa",
+        attn_impl: str = "flash_attention_2", #"sdpa",
         pad_token_id: Optional[int] = 151643,   # matches your example; tokenizer may override
         **kwargs: Any,
     ):

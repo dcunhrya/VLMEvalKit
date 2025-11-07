@@ -12,6 +12,13 @@ from ..smp import *
 from ..smp.file import get_intermediate_file_path, get_file_extension
 from ..utils import track_progress_rich
 
+CONF_PATTERN = re.compile(r"confidence[:\s]*([0-9.]+)", re.IGNORECASE)
+BBOX_PATTERN = re.compile(r"\[([\d.,\s-]+)\]")
+WORD_PATTERN = re.compile(r"([A-Za-z][A-Za-z\s\-]*)")
+DESC_PATTERN = re.compile(r"'description'\s*:\s*['\"]([^'\"]+)['\"]", re.IGNORECASE)
+MOD_PATTERN  = re.compile(r"'modality'\s*:\s*['\"]([^'\"]+)['\"]", re.IGNORECASE)
+POLYGON_PATTERN = re.compile(r"(\[[^\]]*\])")
+
 
 class ImageVQADataset(ImageBaseDataset):
     TYPE = 'VQA'
@@ -48,6 +55,26 @@ class ImageVQADataset(ImageBaseDataset):
         'ChartQA_TEST': 'c902e0aa9be5582a7aad6dcf52734b42',
         'GQA_TestDev_Balanced': '99b62f22e224d9b2f32dcbe41359d1c9',
     }
+
+    def post_process(self, output):
+        """Extract answer and optional confidence."""
+        if not isinstance(output, str):
+            output = str(output)
+
+        output = str(output)
+
+        # Extract confidence
+        conf_match = CONF_PATTERN.search(output)
+        confidence = conf_match.group(1) if conf_match else None
+
+        # Extract the first alphabetic word or phrase
+        word_match = WORD_PATTERN.search(output)
+        answer = word_match.group(1).strip() if word_match else None
+
+        return {
+            "prediction": answer,
+            "confidence": confidence,
+        }
 
     def build_prompt(self, line):
         msgs = super().build_prompt(line)
@@ -179,7 +206,520 @@ class ImageVQADataset(ImageBaseDataset):
         dump(ret, result_file)
         return ret
 
+class MicroBench_Open(ImageVQADataset):
 
+    DATASET_URL = {'MicroBench': ''}
+
+    def load_data(self, dataset="MicroBench_Open", data_file=None, repo_id="xuxuxuxuxu/MicroBench"):
+
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        return data
+    
+class MicroBench_Open_Basic(ImageVQADataset):
+
+    DATASET_URL = {'MicroBench': ''}
+
+    def load_data(self, dataset="MicroBench_Open_Basic", data_file=None, repo_id="xuxuxuxuxu/MicroBench"):
+
+        dfs = []
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        return data
+    
+class Cls_Open(ImageVQADataset):
+    TYPE = 'VQA'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Cls_Open']
+    
+    def load_data(self, dataset="Cls_Open", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["prompt"] = ("Question: " + data["question"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+
+        # if self.meta_only:
+        #     tgt_path = toliststr(line['image_path'])
+        # else:
+        #     tgt_path = self.dump_image(line)
+        tgt_path = toliststr(line['image_path'])
+
+        # question = line['question']
+        # options = line['options']
+        # options_prompt = 'Options:\n'
+        # options_prompt += f'{options}\n'
+        # hint = line['hint'] if ('hint' in line and not pd.isna(line['hint'])) else None
+        # prompt = ''
+        # if hint is not None:
+        #     prompt += f'Hint: {hint}\n'
+        # prompt += f'Question: {question}'
+        # if len(options):
+        #     prompt += options
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+    
+class Question_Cls(ImageVQADataset):
+    TYPE = 'VQA'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Question_Cls']
+    
+    def load_data(self, dataset="Question_Cls", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["prompt"] = ("Question: " + data["question"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+    
+    def post_process(self, output):
+        """Extract description, modality, and optional confidence from model output."""
+
+        if not isinstance(output, str):
+            output = str(output)
+
+        # Extract description
+        desc_match = DESC_PATTERN.search(output)
+        description = desc_match.group(1).strip() if desc_match else None
+
+        # Extract modality
+        mod_match = MOD_PATTERN.search(output)
+        modality = mod_match.group(1).strip() if mod_match else None
+
+        return {
+            "description": description,
+            "modality": modality
+        }
+
+class Question_Det(ImageVQADataset):
+    TYPE = 'VQA'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Question_Det']
+    
+    def load_data(self, dataset="Question_Det", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["prompt"] = ("Question: " + data["question"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+    
+    def post_process(self, output):
+        """Extract description, modality, and optional confidence from model output."""
+
+        if not isinstance(output, str):
+            output = str(output)
+
+        # Extract description
+        desc_match = DESC_PATTERN.search(output)
+        description = desc_match.group(1).strip() if desc_match else None
+
+        # Extract modality
+        mod_match = MOD_PATTERN.search(output)
+        modality = mod_match.group(1).strip() if mod_match else None
+
+        return {
+            "description": description,
+            "modality": modality
+        }
+
+class Question_GMAI(ImageVQADataset):
+    TYPE = 'VQA'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Question_GMAI']
+    
+    def load_data(self, dataset="Question_GMAI", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["prompt"] = ("Question: " + data["question"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+    
+    def post_process(self, output):
+        """Extract description, modality, and optional confidence from model output."""
+
+        if not isinstance(output, str):
+            output = str(output)
+
+        # Extract description
+        desc_match = DESC_PATTERN.search(output)
+        description = desc_match.group(1).strip() if desc_match else None
+
+        # Extract modality
+        mod_match = MOD_PATTERN.search(output)
+        modality = mod_match.group(1).strip() if mod_match else None
+
+        return {
+            "description": description,
+            "modality": modality
+        }
+
+class Question_Microbench(ImageVQADataset):
+    TYPE = 'VQA'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Question_Microbench']
+    
+    def load_data(self, dataset="Question_Microbench", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["prompt"] = ("Question: " + data["question"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+    
+    def post_process(self, output):
+        """Extract description, modality, and optional confidence from model output."""
+
+        if not isinstance(output, str):
+            output = str(output)
+
+        # Extract description
+        desc_match = DESC_PATTERN.search(output)
+        description = desc_match.group(1).strip() if desc_match else None
+
+        # Extract modality
+        mod_match = MOD_PATTERN.search(output)
+        modality = mod_match.group(1).strip() if mod_match else None
+
+        return {
+            "description": description,
+            "modality": modality
+        }
+
+class Question_Seg(ImageVQADataset):
+    TYPE = 'VQA'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Question_Seg']
+    
+    def load_data(self, dataset="Question_Seg", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["prompt"] = ("Question: " + data["question"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+    
+    def post_process(self, output):
+        """Extract description, modality, and optional confidence from model output."""
+
+        if not isinstance(output, str):
+            output = str(output)
+
+        # Extract description
+        desc_match = DESC_PATTERN.search(output)
+        description = desc_match.group(1).strip() if desc_match else None
+
+        # Extract modality
+        mod_match = MOD_PATTERN.search(output)
+        modality = mod_match.group(1).strip() if mod_match else None
+
+        return {
+            "description": description,
+            "modality": modality
+        }
+
+class Seg_guess_mask_Open(ImageVQADataset):
+    TYPE = 'MCQ'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Seg_guess_mask_Open']
+    
+    def load_data(self, dataset="Seg_guess_mask_Open", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["prompt"] = ("Question: " + data["question"] + data["options"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+    
+    def post_process(self, output):
+        output = str(output)
+
+        # Try explicit "polygon" first, else any [ ... ] list
+        polygon_match = POLYGON_PATTERN.search(output)
+        conf_match = CONF_PATTERN.search(output)
+
+        return {
+            "polygon": polygon_match.group(1) if polygon_match else None,
+            "confidence": float(conf_match.group(1)) if conf_match else None,
+        }
+
+class Seg_with_mask_Open(ImageVQADataset):
+    TYPE = 'MCQ'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Seg_with_mask_Open']
+    
+    def load_data(self, dataset="Seg_with_mask_Open", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["prompt"] = ("Question: " + data["question"] + data["options"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+ 
+ 
+class GMAIMMBenchDataset_Open(ImageVQADataset):
+
+    DATASET_URL = {
+        'GMAI-MMBench_VAL': 'https://huggingface.co/datasets/VLMEval/GMAI-MMBench/resolve/main/GMAI-MMBench_VAL.tsv',
+        # 'GMAI_mm_bench_TEST_part_1': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_1.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_2': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_2.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_3': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_3.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_4': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_4.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_5': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_5.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_6': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_6.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_7': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_7.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_8': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_8.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_9': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_9.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_10': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_10.tsv',  # noqa: E501
+        # 'GMAI_mm_bench_TEST_part_11': 'https://huggingface.co/datasets/OpenGVLab/GMAI-MMBench/resolve/main/GMAI_mm_bench_TEST_part_11.tsv',  # noqa: E501
+    }
+
+    DATASET_MD5 = {
+        'GMAI-MMBench_VAL': '254bd581627866f1c499d3d6b4422324',
+        # 'GMAI_mm_bench_TEST_part_1': '900d735231230a63f4ed45665c078ef4',
+        # 'GMAI_mm_bench_TEST_part_2': '1b27ab621386945d7e4a765ad2d22b0e',
+        # 'GMAI_mm_bench_TEST_part_3': '44bdc2b6267dd505d529b8cad06f0fb2',
+        # 'GMAI_mm_bench_TEST_part_4': '5a04a04fcac9f1466709f242fdb80acb',
+        # 'GMAI_mm_bench_TEST_part_5': 'c70baf8909eda9af0ddeab275c721336',
+        # 'GMAI_mm_bench_TEST_part_6': '825abc39596b644dead9350d0cfa3b96',
+        # 'GMAI_mm_bench_TEST_part_7': 'defb8aed2fb77365a76b6b9abd6a2701',
+        # 'GMAI_mm_bench_TEST_part_8': 'ff490d60b85f2bb0abb67a435b298c65',
+        # 'GMAI_mm_bench_TEST_part_9': 'ff67c86f40da93b09139ac1d1ba5dc6b',
+        # 'GMAI_mm_bench_TEST_part_10': '3dae94627b9ac0fe00180d4780fbf6dc',
+        # 'GMAI_mm_bench_TEST_part_11': 'd08dc813f0eb6bbab63cae2a9d113c4b',
+    }
+
+    @classmethod
+    def supported_datasets(cls):
+        return ['GMAI-MMBench_VAL_Open', 'GMAI-MMBench_TEST']
+
+    def load_data(self, dataset, data_file=None):
+        if dataset == 'GMAI-MMBench_VAL_Open':
+            if data_file:
+                data_path = osp.join(LMUDataRoot(), data_file)
+            else:
+                data_path = osp.join(LMUDataRoot(), f'{dataset}.tsv')
+            if file_size(data_path, 'GB') > 1:
+                local_path = data_path.replace('.tsv', '_local.tsv')
+                if not osp.exists(local_path) or os.environ.get('FORCE_LOCAL'):
+                    from ..tools import LOCALIZE
+                    LOCALIZE(data_path, local_path)
+                data_path = local_path
+            return load(data_path)
+        elif dataset == 'GMAI-MMBench_TEST':
+            dfs = []
+            for part_num in range(1, 12):
+                part_name = f'GMAI_mm_bench_TEST_part_{part_num}'
+                url = self.DATASET_URL[part_name]
+                file_md5 = self.DATASET_MD5.get(part_name)
+                tsv_path = osp.join(LMUDataRoot(), f'{part_name}.tsv')
+                if not osp.exists(tsv_path) or (file_md5 and md5(tsv_path) != file_md5):
+                    download_file(url, filename=tsv_path)
+                local_path = tsv_path.replace('.tsv', '_local.tsv')
+                if not osp.exists(local_path) or os.environ.get('FORCE_LOCAL'):
+                    from ..tools import LOCALIZE
+                    LOCALIZE(tsv_path, local_path)
+                tsv_path = local_path
+                # 加载数据
+                df = load(tsv_path)
+                dfs.append(df)
+            # 合并所有数据
+            data = pd.concat(dfs, ignore_index=True)
+            return data
+        else:
+            raise ValueError(f"未知的数据集：{dataset}")
+         
+class Det_grounding_Open(ImageVQADataset):
+    TYPE = 'VQA'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Det_grounding_Open']
+    
+    def load_data(self, dataset="Det_grounding_Open", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["prompt"] = ("Question: " + data["question"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+    
+class Det_bbox_Open(ImageVQADataset):
+    TYPE = 'VQA'
+    @classmethod
+    def supported_datasets(cls):
+        return ['Det_bbox_Open']
+    
+    def load_data(self, dataset="Det_bbox_Open", data_file=None):
+        tsv_path = osp.join(LMUDataRoot(), data_file)
+        print(f'Loading from {tsv_path}')
+        data = load(tsv_path)
+        data["prompt"] = ("Question: " + data["question"])
+        return data
+    
+    def build_prompt(self, line):
+        if isinstance(line, int):
+            line = self.data.iloc[line]
+        tgt_path = toliststr(line['image_path'])
+        prompt = line["prompt"]
+
+        msgs = []
+        if isinstance(tgt_path, list):
+            msgs.extend([dict(type='image', value=p) for p in tgt_path])
+        else:
+            msgs = [dict(type='image', value=tgt_path)]
+        msgs.append(dict(type='text', value=prompt))
+
+        return msgs
+    
+    def post_process(self, output):
+        output = str(output)
+        bbox = BBOX_PATTERN.search(output)
+        conf = CONF_PATTERN.search(output)
+        return {
+            "bbox": [float(x) for x in bbox.group(1).split(",")] if bbox else None,
+            "confidence": float(conf.group(1)) if conf else None,
+        }
+    
 class VizWiz(ImageBaseDataset):
     TYPE = 'VQA'
     DATASET_URL = {
