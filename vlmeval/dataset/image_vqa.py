@@ -527,7 +527,7 @@ class Seg_guess_mask_Open(ImageVQADataset):
         tsv_path = osp.join(LMUDataRoot(), data_file)
         print(f'Loading from {tsv_path}')
         data = load(tsv_path)
-        data["prompt"] = ("Question: " + data["question"] + data["options"])
+        data["prompt"] = ("Question: " + data["question"])
         return data
     
     def build_prompt(self, line):
@@ -567,7 +567,7 @@ class Seg_with_mask_Open(ImageVQADataset):
         tsv_path = osp.join(LMUDataRoot(), data_file)
         print(f'Loading from {tsv_path}')
         data = load(tsv_path)
-        data["prompt"] = ("Question: " + data["question"] + data["options"])
+        data["prompt"] = ("Question: " + data["question"])
         return data
     
     def build_prompt(self, line):
